@@ -1,0 +1,28 @@
+[Unit]
+Description=SMTP to AWS SES bridge
+Documentation=https://github.com/your-org/smtp-to-ses
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=smtp-to-ses
+Group=smtp-to-ses
+
+# Install the app under /opt/smtp-to-ses (see README).
+WorkingDirectory=/opt/smtp-to-ses
+EnvironmentFile=/etc/smtp-to-ses/.env
+ExecStart=/opt/smtp-to-ses/.venv/bin/smtp-to-ses
+
+Restart=on-failure
+RestartSec=5
+
+# Hardening (adjust if your setup needs broader access).
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/smtp-to-ses
+
+[Install]
+WantedBy=multi-user.target

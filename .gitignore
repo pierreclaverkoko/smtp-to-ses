@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment and secrets
+.env
+
+# uv (lockfile is committed for reproducible installs)
+# uv.lock is tracked in git
+
+# IDE and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Test and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# PyPI build artifacts
+*.whl
