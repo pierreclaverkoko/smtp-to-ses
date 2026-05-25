@@ -76,11 +76,12 @@ class SESForwarderHandler:
         envelope,
         address: str,
         mail_options: list[str],
-    ) -> str:
+    ) -> str | object:
         """Validate the envelope sender before accepting MAIL FROM."""
         if error := self.email_checker.check_sender(address):
             return f"550 {error}"
-        return "250 OK"
+        # aiosmtpd sets envelope.mail_from only when the hook returns MISSING.
+        return MISSING
 
     async def handle_RCPT(
         self,
@@ -89,11 +90,12 @@ class SESForwarderHandler:
         envelope,
         address: str,
         rcpt_options: list[str],
-    ) -> str:
+    ) -> str | object:
         """Validate each recipient before accepting RCPT TO."""
         if error := self.email_checker.check_recipient(address):
             return f"550 {error}"
-        return "250 OK"
+        # aiosmtpd appends rcpt_tos only when the hook returns MISSING.
+        return MISSING
 
     async def handle_DATA(self, server: SMTP, session: Session, envelope) -> str:
         """Screen for spam, then forward the raw RFC 822 message to SES."""
