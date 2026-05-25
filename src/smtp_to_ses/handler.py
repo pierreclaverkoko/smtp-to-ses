@@ -65,6 +65,8 @@ class SESForwarderHandler:
         """Reject DNS blocklisted clients before accepting EHLO."""
         if error := self.spam_checker.check_connection(session.peer[0]):
             return [f"550 {error}"]
+        # aiosmtpd's 5-arg EHLO hook does not set host_name; we must do it here.
+        session.host_name = hostname
         return responses
 
     async def handle_MAIL(

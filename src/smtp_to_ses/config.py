@@ -101,3 +101,14 @@ SPAMASSASSIN_HOST: str | None = os.getenv("SPAMASSASSIN_HOST") or None
 
 # Reject messages at or above this SpamAssassin score.
 SPAM_SCORE_THRESHOLD: float = _float_env("SPAM_SCORE_THRESHOLD", 5.0)
+
+# --- SMTP authentication (optional) ---
+
+# When both are set, clients must AUTH (PLAIN/LOGIN) before MAIL/RCPT/DATA.
+SMTP_AUTH_USERNAME: str | None = os.getenv("SMTP_AUTH_USERNAME") or None
+SMTP_AUTH_PASSWORD: str | None = os.getenv("SMTP_AUTH_PASSWORD") or None
+
+
+def smtp_auth_enabled() -> bool:
+    """Return True when SMTP AUTH is configured."""
+    return bool(SMTP_AUTH_USERNAME and SMTP_AUTH_PASSWORD)

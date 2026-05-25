@@ -5,7 +5,7 @@ Guide for contributors and maintainers. End-user server deployment is documented
 ## Local setup
 
 ```bash
-git clone https://github.com/your-org/smtp-to-ses.git
+git clone https://github.com/pierreclaverkoko/smtp-to-ses.git
 cd smtp-to-ses
 uv sync --group dev
 cp .env.example .env

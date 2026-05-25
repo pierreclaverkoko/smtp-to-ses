@@ -9,6 +9,7 @@ Lightweight SMTP server that receives mail from local applications and forwards 
 - **Domain and email validation** — syntax checks, optional domain allowlists, optional MX verification
 - **Spam screening** — DNS blocklist (DNSBL) checks on client IP, optional SpamAssassin scoring
 - Configuration via `.env` or environment variables
+- Optional SMTP AUTH (PLAIN/LOGIN) for smarthost clients
 - Works with boto3's default AWS credential chain (env vars, shared config, IAM roles)
 
 ## Requirements
@@ -33,7 +34,7 @@ sudo useradd --system --home /opt/smtp-to-ses --shell /usr/sbin/nologin smtp-to-
 sudo mkdir -p /opt/smtp-to-ses
 sudo chown smtp-to-ses:smtp-to-ses /opt/smtp-to-ses
 
-sudo -u smtp-to-ses git clone https://github.com/your-org/smtp-to-ses.git /opt/smtp-to-ses
+sudo -u smtp-to-ses git clone https://github.com/pierreclaverkoko/smtp-to-ses.git /opt/smtp-to-ses
 cd /opt/smtp-to-ses
 sudo -u smtp-to-ses uv sync
 ```
@@ -84,7 +85,111 @@ Configure your app's SMTP settings:
 | Host | `127.0.0.1` (or your `LISTEN_HOST`) |
 | Port | `1025` (or your `LISTEN_PORT`) |
 | TLS | Usually not needed for localhost |
-| Auth | None by default |
+| TLS | Usually not needed for localhost |
+| Auth | Optional — see [SMTP authentication](#smtp-authentication) |
+
+## SMTP authentication
+
+By default the bridge accepts mail without SMTP credentials. For Docker smarthosts (Exim) or any untrusted network, enable auth by setting **both** variables in `/etc/smtp-to-ses/.env`:
+
+```env
+SMTP_AUTH_USERNAME=smtp_user
+SMTP_AUTH_PASSWORD=your-strong-password-here
+```
+
+Restart the service:
+
+```bash
+sudo systemctl restart smtp-to-ses
+```
+
+When configured, clients must authenticate with **PLAIN** or **LOGIN** before `MAIL FROM`. Auth is allowed on unencrypted connections (`auth_require_tls=false`), which suits a Docker-to-host relay on a private network.
+
+### Exim / Docker smarthost (Sentry)
+
+Match the Exim `SMARTHOST_*` credentials to the bridge:
+
+```yaml
+services:
+  smtp:
+    environment:
+      SMARTHOST_ADDRESS: "host.docker.internal"
+      SMARTHOST_PORT: "1025"
+      SMARTHOST_USER: "smtp_user"
+      SMARTHOST_PASSWORD: "your-strong-password-here"
+```
+
+And on the host in `/etc/smtp-to-ses/.env`:
+
+```env
+SMTP_AUTH_USERNAME=smtp_user
+SMTP_AUTH_PASSWORD=your-strong-password-here
+```
+
+### Python test script with auth
+
+```python
+with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as smtp:
+    smtp.login("smtp_user", "your-strong-password-here")
+    smtp.send_message(msg)
+```
+
+Failed logins appear in the journal as `SMTP authentication failed for user ...`.
+
+To disable auth again, remove or comment out both `SMTP_AUTH_*` variables and restart the service.
+
+## Testing
+
+Send a test message with a short Python script (stdlib only — no extra packages):
+
+```python
+#!/usr/bin/env python3
+"""Send a test email through the smtp-to-ses bridge."""
+
+import smtplib
+from email.message import EmailMessage
+
+SMTP_HOST = "127.0.0.1"   # use host IP if testing from Docker
+SMTP_PORT = 1025
+
+FROM = "noreply@yourdomain.com"      # must match ALLOWED_SENDER_DOMAINS + SES
+TO = "you@example.com"               # must be verified if SES sandbox is on
+
+msg = EmailMessage()
+msg["From"] = FROM
+msg["To"] = TO
+msg["Subject"] = "smtp-to-ses test"
+msg.set_content("If you receive this, the bridge and SES are working.")
+
+with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as smtp:
+    # Uncomment if SMTP_AUTH_USERNAME / SMTP_AUTH_PASSWORD are set:
+    # smtp.login("smtp_user", "your-strong-password-here")
+    smtp.send_message(msg)
+
+print("Message accepted by the bridge.")
+```
+
+Save as `test_smtp.py`, edit `FROM`, `TO`, and host/port, then run:
+
+```bash
+python3 test_smtp.py
+```
+
+Watch the bridge logs in another terminal:
+
+```bash
+journalctl -u smtp-to-ses -f
+```
+
+A successful run shows `MAIL FROM`, `RCPT TO`, `DATA`, then:
+
+```
+Successfully sent via SES. Message ID: ...
+```
+
+If the script raises `SMTPRecipientsRefused` or `SMTPDataError`, the log line usually explains why (domain not in `ALLOWED_SENDER_DOMAINS`, SES rejection, etc.).
+
+When testing from a Docker container, set `SMTP_HOST` to the host gateway (`host.docker.internal` or `172.17.0.1` / your compose network gateway) instead of `127.0.0.1`.
 
 ## Security recommendations
 
@@ -94,6 +199,7 @@ Configure your app's SMTP settings:
 - Keep `SPAM_CHECK_ENABLED=true` and review `SPAM_DNSBL_ZONES` for your policy
 - Run the service as a dedicated unprivileged user (the unit file does this)
 - Protect `/etc/smtp-to-ses/.env` with mode `600`
+- Enable `SMTP_AUTH_USERNAME` / `SMTP_AUTH_PASSWORD` when the bridge listens beyond strict localhost trust (e.g. Docker networks on `0.0.0.0`)
 
 ## Configuration reference
 
@@ -115,6 +221,8 @@ Configure your app's SMTP settings:
 | `SPAM_DNSBL_ZONES` | see `.env.example` | Comma-separated DNSBL zones |
 | `SPAMASSASSIN_HOST` | — | Optional SpamAssassin spamd host (`127.0.0.1:783`) |
 | `SPAM_SCORE_THRESHOLD` | `5.0` | Reject at or above this SpamAssassin score |
+| `SMTP_AUTH_USERNAME` | — | SMTP auth username (requires `SMTP_AUTH_PASSWORD`) |
+| `SMTP_AUTH_PASSWORD` | — | SMTP auth password (requires `SMTP_AUTH_USERNAME`) |
 
 ## Optional: SpamAssassin
 

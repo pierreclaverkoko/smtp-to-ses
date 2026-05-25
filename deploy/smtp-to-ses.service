@@ -1,6 +1,6 @@
 [Unit]
 Description=SMTP to AWS SES bridge
-Documentation=https://github.com/your-org/smtp-to-ses
+Documentation=https://github.com/pierreclaverkoko/smtp-to-ses
 After=network-online.target
 Wants=network-online.target
 

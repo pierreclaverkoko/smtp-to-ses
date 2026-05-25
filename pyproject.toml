@@ -35,9 +35,9 @@ dependencies = [
 smtp-to-ses = "smtp_to_ses.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/your-org/smtp-to-ses"
-Repository = "https://github.com/your-org/smtp-to-ses"
-Issues = "https://github.com/your-org/smtp-to-ses/issues"
+Homepage = "https://github.com/pierreclaverkoko/smtp-to-ses"
+Repository = "https://github.com/pierreclaverkoko/smtp-to-ses"
+Issues = "https://github.com/pierreclaverkoko/smtp-to-ses/issues"
 
 [build-system]
 requires = ["hatchling"]
